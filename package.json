@@ -1,0 +1,29 @@
+{
+  "name": "electerm-bot",
+  "version": "0.1.0",
+  "description": "Restrained social media bot for electerm: 1 post/day from releases & blogs, LLM-drafted replies.",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "preview": "node src/run.js preview",
+    "post": "node src/run.js post",
+    "reply": "node src/run.js reply",
+    "dry": "DRY_RUN=true node src/run.js post",
+    "pm2:start": "pm2 start ecosystem.config.cjs",
+    "pm2:reload": "pm2 reload ecosystem.config.cjs",
+    "pm2:logs": "pm2 logs electerm-bot",
+    "pm2:stop": "pm2 delete electerm-bot"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@atproto/api": "^0.15.0",
+    "dotenv": "^17.2.0",
+    "masto": "^7.1.0",
+    "node-cron": "^4.2.0",
+    "twitter-api-v2": "^1.24.0"
+  },
+  "license": "MIT"
+}
