@@ -29,9 +29,10 @@ export async function post (text) {
 // Scan recent updates for messages that mention the bot or reply to the bot, answer once each.
 export async function handleReplies (composeReply, canReply, countReply, isReplied) {
   const me = await getMe()
-  const { result: updates } = await call('getUpdates', { timeout: 0, allowed_updates: ['message'] })
+  // call() already unwraps `result` — the raw updates array is the return value
+  const updates = await call('getUpdates', { timeout: 0, allowed_updates: ['message'] })
   let handled = 0
-  for (const u of updates) {
+  for (const u of (Array.isArray(updates) ? updates : [])) {
     const m = u.message
     if (!m || !m.text) continue
     const chatId = m.chat.id
