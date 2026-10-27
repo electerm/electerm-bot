@@ -5,7 +5,8 @@
 ## 特点
 
 - **克制**：每天最多 1 条帖子；每天最多 `REPLIES_PER_DAY` 条回复（默认 3）；拿不准的提及直接跳过
-- **内容源**：GitHub Releases（electerm/electerm）+ 官网博客（electerm/electerm.org 的 `src/blogs/`）
+- **内容源**：GitHub Releases（electerm/electerm）+ 官网博客（electerm/electerm.org 的 `src/blogs/`）+ 视频（同仓库 `bin/videos.json`）
+- **选材顺序**：新 release → 没发过的 blog → 没发过的视频（各自按时间从新到旧）
 - **多渠道**：Telegram / Bluesky / Mastodon / X / Facebook / 微博，按 `.env` 里配置了哪个就启用哪个
 - **默认 DRY_RUN**：只打印不发送，跑通后再关掉
 - **有状态**：`data/state.json` 记录发过什么、回复过谁，重启不重发
@@ -80,9 +81,10 @@ LLM 用任意 OpenAI 兼容网关（你自己的 cf-ai-proxy 也行），填 `OP
 
 ## 防刷屏机制
 
-- `MIN_RELEASE_DATE`：早于此的 release 不发（避免首次运行把历史版本全发一遍）
+- **release 有水位线**：只发比上一条已发布内容更新的 release（`state.lastPost.sourceAt`），早于 `MIN_RELEASE_DATE` 的一律忽略，所以不会把历史版本逐条补发
+- **blog / 视频没有水位线**：只要没发过就进队列，按发布时间从新到旧，一天一条慢慢放（`seen` 保证不重复）
 - 发过/回过的 id 永久记录，不会重复
-- 没有新内容当天就不发（想每天固定发可以自己加个"回顾旧博客"源）
+- **发送失败不消耗条目**：所有渠道都失败时不写 state，下轮重试（避免"静默丢弃"）
 - DRY_RUN=true 时一切只打印
 
 ## 调整

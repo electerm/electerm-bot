@@ -1,10 +1,10 @@
 import { config } from '../config.js'
-import { isSeen, lastSourceAt } from '../state.js'
+import { isSeen } from '../state.js'
 
-// New blog posts from the electerm.org repo (src/blogs/<slug>/en.md),
-// newest first by last-commit date. Not marked seen here — the poster does that after sending.
-// Only returns posts newer than the last thing we posted (same high-water mark
-// as releases) so we don't drip-feed the archive.
+// Blog posts from the electerm.org repo (src/blogs/<slug>/en.md), newest first
+// by last-commit date. Not marked seen here — the poster does that after sending.
+// No watermark: every post we have never published is a candidate (blog backlog
+// is meant to be shared), and `seen` alone keeps us from repeating one.
 // Returns [{ id, kind: 'blog', slug, title, body, url, publishedAt }]
 
 async function gh (path) {
@@ -49,19 +49,14 @@ async function blogContent (slug) {
   return Buffer.from(f.content, 'base64').toString('utf8')
 }
 
-export async function fetchNewBlogs (limit = 1, { ignoreFloor = false } = {}) {
-  const floor = ignoreFloor ? 0 : lastSourceAt()
+export async function fetchNewBlogs (limit = 1) {
   const dirs = await gh('/repos/' + config.blogsRepo + '/contents/src/blogs')
   const slugs = dirs.filter(d => d.type === 'dir').map(d => d.name)
   const unseen = slugs.filter(s => !isSeen(`blog:${s}`))
   const dated = await Promise.all(unseen.map(async s => ({ slug: s, date: await blogDate(s) })))
-  const fresh = dated.filter(d => {
-    const t = d.date ? new Date(d.date).getTime() : 0
-    return Number.isFinite(t) && t > floor
-  })
-  fresh.sort((a, b) => b.date.localeCompare(a.date))
+  dated.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
   const out = []
-  for (const { slug, date } of fresh.slice(0, limit)) {
+  for (const { slug, date } of dated.slice(0, limit)) {
     const md = await blogContent(slug)
     out.push({
       id: `blog:${slug}`,

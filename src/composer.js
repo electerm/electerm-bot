@@ -8,6 +8,9 @@ function template (item) {
   if (item.kind === 'release') {
     return `electerm ${item.version} released 🎉\n\n${item.url}\n\n#electerm #terminal #opensource`
   }
+  if (item.kind === 'video') {
+    return `${item.title}\n\n${item.url}\n\n#electerm #terminal #ssh`
+  }
   return `New blog: ${item.title}\n\n${item.url}\n\n#electerm #terminal #ssh`
 }
 
@@ -49,7 +52,9 @@ export async function composePost (item) {
         role: 'user',
         content: item.kind === 'release'
           ? `Write a post announcing electerm ${item.version}.\n\nRelease notes:\n${item.body}`
-          : `Write a post sharing this blog article.\n\nTitle: ${item.title}\nExcerpt:\n${item.body}`
+          : item.kind === 'video'
+            ? `Write a post sharing this short electerm video/tutorial.\n\nTitle: ${item.title}${item.titleAlt ? `\nOriginal title: ${item.titleAlt}` : ''}`
+            : `Write a post sharing this blog article.\n\nTitle: ${item.title}\nExcerpt:\n${item.body}`
       }
     ], { maxTokens: 200 })
     if (text) return withLink(text, item.url)
