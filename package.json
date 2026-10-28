@@ -10,6 +10,8 @@
     "post": "node src/run.js post",
     "reply": "node src/run.js reply",
     "dry": "DRY_RUN=true node src/run.js post",
+    "fb:token": "node scripts/fb-token.mjs",
+    "fb:check": "node scripts/fb-token.mjs --check",
     "pm2:start": "pm2 start ecosystem.config.cjs",
     "pm2:reload": "pm2 reload ecosystem.config.cjs",
     "pm2:logs": "pm2 logs electerm-bot",

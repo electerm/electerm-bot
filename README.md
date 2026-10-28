@@ -68,7 +68,7 @@ sudo systemctl daemon-reload && sudo systemctl enable --now electerm-bot
 | Bluesky | 账号 + App Password（Settings → App passwords） |
 | Mastodon | Preferences → Development → New application（scope: read write），填 API URL + token |
 | X | developer 账号的 4 个 OAuth1 密钥（免费层只够低频发帖） |
-| Facebook | 公共主页 + Meta 开发者应用（`pages_manage_posts`、`pages_read_engagement` 权限），长期有效的 Page Access Token，填 `FACEBOOK_PAGE_ID` + `FACEBOOK_PAGE_TOKEN` |
+| Facebook | 公共主页 + Meta 开发者应用（`pages_manage_posts`、`pages_read_engagement`、`pages_manage_engagement` 权限），长期有效的 Page Access Token，填 `FACEBOOK_PAGE_ID` + `FACEBOOK_PAGE_TOKEN`。**详细步骤见 [docs/facebook-setup.md](docs/facebook-setup.md)**，换 token 用 `npm run fb:token`，体检用 `npm run fb:check` |
 | 微博 | open.weibo.com 创建并审核通过的应用，OAuth2 拿 `WEIBO_ACCESS_TOKEN`（普通 token 约 90 天过期，到期需重新授权） |
 
 LLM 用任意 OpenAI 兼容网关（你自己的 cf-ai-proxy 也行），填 `OPENAI_BASE_URL` / `OPENAI_API_KEY` / `LLM_MODEL`。

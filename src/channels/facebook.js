@@ -1,10 +1,12 @@
 import { config } from '../config.js'
 
 // Facebook Page posts via Graph API (plain fetch, no SDK).
-// Requires: a Facebook Page + app with pages_manage_posts & pages_read_engagement,
-// and a long-lived Page Access Token.
+// Requires: a Facebook Page + app with pages_manage_posts (publish),
+// pages_read_engagement (read posts/comments) and pages_manage_engagement
+// (reply as the Page), plus a long-lived Page Access Token.
+// Setup walkthrough: docs/facebook-setup.md — token helper: scripts/fb-token.mjs
 
-const API = 'https://graph.facebook.com/v21.0'
+const API = 'https://graph.facebook.com/v26.0'
 
 async function call (path, params = {}, method = 'GET') {
   const url = new URL(`${API}/${path}`)
