@@ -81,10 +81,14 @@ LLM 用任意 OpenAI 兼容网关（你自己的 cf-ai-proxy 也行），填 `OP
 
 ## 防刷屏机制
 
-- **release 有水位线**：只发比上一条已发布内容更新的 release（`state.lastPost.sourceAt`），早于 `MIN_RELEASE_DATE` 的一律忽略，所以不会把历史版本逐条补发
+- **release 水位线只由 release 自己推进**：`state.releaseFloor`（外加从 `seen` 里已发布 release 的 `published_at` 反推，双保险）决定"什么是新 release"。blog / 视频的日期再旧也不会把它拉回去——之前正是因为发完 blog 后水位线被 blog 的旧日期覆盖，导致老 release 又被当成新的发了一遍
+- 早于 `MIN_RELEASE_DATE` 的一律忽略，所以首次部署也不会把历史版本逐条补发
 - **blog / 视频没有水位线**：只要没发过就进队列，按发布时间从新到旧，一天一条慢慢放（`seen` 保证不重复）
 - 发过/回过的 id 永久记录，不会重复
-- **发送失败不消耗条目**：所有渠道都失败时不写 state，下轮重试（避免"静默丢弃"）
+- **发送前先落盘认领**：条目在真正发送前就写入 `seen`，进程被 kill / pm2 reload / 并发跑都不会重发同一条（最多一次，绝不两次）
+- **单实例锁**：`data/.post.lock` 保证同一时刻只有一个发帖进程（pm2 reload 期间新旧进程并存、手跑 `npm run post` 都不会撞车）
+- **state 坏了不装死也不乱发**：`state.json` 解析失败会备份成 `state.json.corrupt-<ts>`，并把 release 水位线钉在当下，只发之后的新 release
+- **发送失败不消耗条目**：所有渠道都失败（一条都没发出去）时撤销认领，下轮重试（避免"静默丢弃"）
 - DRY_RUN=true 时一切只打印
 
 ## 调整

@@ -1,5 +1,5 @@
 import { config, enabledChannels } from './config.js'
-import { postedToday, update, today } from './state.js'
+import { postedToday, update, today, withLock, claimItem, unmarkSeen } from './state.js'
 import { fetchNewReleases } from './sources/releases.js'
 import { fetchNewBlogs } from './sources/blogs.js'
 import { fetchNewVideos } from './sources/videos.js'
@@ -50,58 +50,66 @@ export async function previewPost ({ force = false } = {}) {
 
 // Pick the next pending content and post it once to all channels.
 export async function dailyPost ({ force = false } = {}) {
-  if (!force && postedToday()) {
-    console.log('[post] already posted today, skip')
-    return null
-  }
-  const item = await pickNext({ ignoreFloor: force })
-  if (!item) {
-    console.log('[post] nothing new to post')
-    return null
-  }
-  const text = await composePost(item)
-  const active = enabledChannels()
-  if (!active.length) {
-    console.log('[post] no channel configured, nothing sent')
-    return null
-  }
-  console.log(`[post] source: ${item.id}`)
-  console.log(`[post] text:\n---\n${text}\n---`)
-  let sent = 0
-  for (const name of active) {
-    try {
-      if (config.dryRun) {
-        console.log(`[post] DRY_RUN skip posting to ${name}`)
-      } else {
-        await channels[name].post(text)
-        sent++
-        console.log(`[post] posted to ${name}`)
-      }
-    } catch (e) {
-      console.error(`[post] ${name} failed:`, e.message)
+  // one poster at a time: a pm2 reload or a manual run must not double-post
+  return withLock(async () => {
+    if (!force && postedToday()) {
+      console.log('[post] already posted today, skip')
+      return null
     }
-  }
-  if (!config.dryRun && sent === 0) {
-    // every channel failed -> do not consume the item, retry next run
-    console.error('[post] all channels failed, item kept for retry')
+    const item = await pickNext({ ignoreFloor: force })
+    if (!item) {
+      console.log('[post] nothing new to post')
+      return null
+    }
+    const text = await composePost(item)
+    const active = enabledChannels()
+    if (!active.length) {
+      console.log('[post] no channel configured, nothing sent')
+      return null
+    }
+    console.log(`[post] source: ${item.id}`)
+    console.log(`[post] text:\n---\n${text}\n---`)
+    // Claim on disk *before* sending, so a crash / kill / concurrent run mid-send
+    // can never publish the same item twice (at most once, never twice).
+    if (!config.dryRun) claimItem(item)
+    let sent = 0
+    for (const name of active) {
+      try {
+        if (config.dryRun) {
+          console.log(`[post] DRY_RUN skip posting to ${name}`)
+        } else {
+          await channels[name].post(text)
+          sent++
+          console.log(`[post] posted to ${name}`)
+        }
+      } catch (e) {
+        console.error(`[post] ${name} failed:`, e.message)
+      }
+    }
+    if (!config.dryRun && sent === 0) {
+      // nothing went out at all -> release the claim, retry next run
+      unmarkSeen(item.id)
+      console.error('[post] all channels failed, item kept for retry')
+      return text
+    }
+    if (!config.dryRun) {
+      update(s => ({
+        ...s,
+        lastPostDate: today(),
+        lastPost: {
+          id: item.id,
+          kind: item.kind,
+          text,
+          at: new Date().toISOString(),
+          // publication time of the source item (informational; the release
+          // watermark itself lives in state.releaseFloor and is only moved by
+          // release posts)
+          sourceAt: item.publishedAt || ''
+        }
+      }))
+    }
     return text
-  }
-  if (!config.dryRun) {
-    update(s => ({
-      ...s,
-      lastPostDate: today(),
-      lastPost: {
-        id: item.id,
-        kind: item.kind,
-        text,
-        at: new Date().toISOString(),
-        // publication time of the source item — the floor for "is this release new?"
-        sourceAt: item.publishedAt || ''
-      },
-      seen: { ...s.seen, [item.id]: new Date().toISOString() }
-    }))
-  }
-  return text
+  })
 }
 
 // Scan mentions on all channels and reply (rate-limited, LLM-drafted).
